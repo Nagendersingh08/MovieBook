@@ -2,7 +2,6 @@ import { inngest } from "../inngest/index.js";
 import Booking from "../models/Booking.js";
 import Show from "../models/Show.js"
 import stripe from 'stripe'
-import { syncClerkUserToMongo } from "../utils/userSync.js";
 
 
 // Function to check availability of selected seats for a movie
@@ -27,8 +26,6 @@ export const createBooking = async (req, res)=>{
         const {userId} = req.auth();
         const {showId, selectedSeats} = req.body;
         const { origin } = req.headers;
-
-        await syncClerkUserToMongo(userId);
 
         // Check if the seat is available for the selected show
         const isAvailable = await checkSeatsAvailability(showId, selectedSeats)
@@ -59,20 +56,20 @@ export const createBooking = async (req, res)=>{
          // Stripe Gateway Initialize
          const stripeInstance = new stripe(process.env.STRIPE_SECRET_KEY)
 
-        // Creating line items for Stripe
-        const line_items = [{
+         // Creating line items to for Stripe
+         const line_items = [{
             price_data: {
-                currency: 'inr',   // changed to INR
+                currency: 'inr',
                 product_data:{
                     name: showData.movie.title
                 },
-                unit_amount: Math.floor(booking.amount) * 100  // INR requires paise
+                unit_amount: Math.floor(booking.amount) * 100
             },
             quantity: 1
-        }]
+         }]
 
          const session = await stripeInstance.checkout.sessions.create({
-            success_url: `${origin}/loading/my-bookings?session_id={CHECKOUT_SESSION_ID}&bookingId=${booking._id.toString()}`,
+            success_url: `${origin}/loading/my-bookings?session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${origin}/my-bookings`,
             line_items: line_items,
             mode: 'payment',
@@ -83,7 +80,6 @@ export const createBooking = async (req, res)=>{
          })
 
          booking.paymentLink = session.url
-         booking.stripeSessionId = session.id
          await booking.save()
 
          // Run Inngest Sheduler Function to check payment status after 10 minutes
@@ -102,54 +98,55 @@ export const createBooking = async (req, res)=>{
     }
 }
 
-export const verifyBookingPayment = async (req, res) => {
+export const confirmBookingPayment = async (req, res) => {
     try {
+        const { session_id } = req.query;
         const { userId } = req.auth();
-        const { sessionId, bookingId } = req.body;
 
-        if (!sessionId || !bookingId) {
-            return res.json({ success: false, message: "Missing payment verification details." });
+        if (!session_id) {
+            return res.status(400).json({ success: false, message: "Missing session id" });
+        }
+
+        const stripeInstance = new stripe(process.env.STRIPE_SECRET_KEY);
+        const session = await stripeInstance.checkout.sessions.retrieve(session_id);
+
+        if (session.payment_status !== "paid") {
+            return res.json({ success: false, message: "Payment is not complete yet" });
+        }
+
+        const bookingId = session.metadata?.bookingId;
+
+        if (!bookingId) {
+            return res.json({ success: false, message: "Missing booking reference" });
         }
 
         const booking = await Booking.findById(bookingId);
 
         if (!booking) {
-            return res.json({ success: false, message: "Booking not found." });
+            return res.json({ success: false, message: "Booking not found" });
         }
 
         if (booking.user !== userId) {
-            return res.json({ success: false, message: "Unauthorized booking access." });
+            return res.status(403).json({ success: false, message: "not authorized" });
         }
 
         if (booking.isPaid) {
-            return res.json({ success: true, paid: true });
+            return res.json({ success: true, message: "Payment already confirmed" });
         }
 
-        const stripeInstance = new stripe(process.env.STRIPE_SECRET_KEY);
-        const session = await stripeInstance.checkout.sessions.retrieve(sessionId);
-
-        if (session.metadata?.bookingId !== bookingId) {
-            return res.json({ success: false, message: "Payment session does not match booking." });
-        }
-
-        if (session.payment_status !== 'paid') {
-            return res.json({ success: true, paid: false });
-        }
-
-        await Booking.findByIdAndUpdate(bookingId, {
-            isPaid: true,
-            paymentLink: ""
-        });
+        booking.isPaid = true;
+        booking.paymentLink = "";
+        await booking.save();
 
         await inngest.send({
             name: "app/show.booked",
             data: { bookingId }
         });
 
-        res.json({ success: true, paid: true });
+        return res.json({ success: true, message: "Payment confirmed" });
     } catch (error) {
         console.log(error.message);
-        res.json({ success: false, message: error.message });
+        return res.json({ success: false, message: error.message });
     }
 }
 

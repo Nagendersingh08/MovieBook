@@ -1,7 +1,7 @@
+import { clerkClient } from "@clerk/express";
 import Booking from "../models/Booking.js"
 import Show from "../models/Show.js";
 import User from "../models/User.js";
-import { syncClerkUserToMongo } from "../utils/userSync.js";
 
 
 // API to check if user is admin
@@ -13,24 +13,7 @@ export const isAdmin = async (req, res) =>{
 export const getDashboardData = async (req, res) =>{
     try {
         const bookings = await Booking.find({isPaid: true});
-        const upcomingShows = await Show.find({showDateTime: {$gte: new Date()}})
-            .populate('movie')
-            .sort({ showDateTime: 1 });
-
-        const seenMovieIds = new Set();
-        const activeShows = upcomingShows.filter((show) => {
-            if (!show.movie?._id) {
-                return false;
-            }
-
-            const movieId = String(show.movie._id);
-            if (seenMovieIds.has(movieId)) {
-                return false;
-            }
-
-            seenMovieIds.add(movieId);
-            return true;
-        });
+        const activeShows = await Show.find({showDateTime: {$gte: new Date()}}).populate('movie');
 
         const totalUser = await User.countDocuments();
 
@@ -65,35 +48,40 @@ export const getAllBookings = async (req, res) =>{
         const bookings = await Booking.find({}).populate({
             path: "show",
             populate: {path: "movie"}
-        }).sort({ createdAt: -1 }).lean()
+        }).sort({ createdAt: -1 })
 
-        const userIds = [...new Set(bookings.map((booking) => booking.user).filter(Boolean))]
-        const users = await User.find({ _id: { $in: userIds } }).lean()
-        const usersMap = new Map(users.map((user) => [user._id, user]))
+        const userIds = [...new Set(bookings
+            .map((booking) => booking.user?.toString?.() || booking.user)
+            .filter(Boolean))];
 
-        const missingUserIds = userIds.filter((userId) => !usersMap.has(userId))
+        const existingUsers = await User.find({ _id: { $in: userIds } }).lean();
+        const userMap = new Map(existingUsers.map((user) => [user._id, user]));
 
-        if (missingUserIds.length > 0) {
-            const syncedUsers = await Promise.all(
-                missingUserIds.map(async (userId) => {
-                    try {
-                        return await syncClerkUserToMongo(userId)
-                    } catch (error) {
-                        console.error(`Failed to sync user ${userId}:`, error.message);
-                        return null;
-                    }
-                })
-            )
+        const bookingsWithUsers = await Promise.all(bookings.map(async (booking) => {
+            const bookingObject = booking.toObject();
+            const userId = bookingObject.user?.toString?.() || bookingObject.user;
 
-            syncedUsers.filter(Boolean).forEach((user) => {
-                usersMap.set(user._id, user)
-            })
-        }
+            let user = userMap.get(userId) || null;
 
-        const bookingsWithUsers = bookings.map((booking) => ({
-            ...booking,
-            user: usersMap.get(booking.user) || null
-        }))
+            if (!user && userId) {
+                try {
+                    const clerkUser = await clerkClient.users.getUser(userId);
+                    user = {
+                        _id: clerkUser.id,
+                        name: `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() || "Unknown User",
+                        email: clerkUser.emailAddresses?.[0]?.emailAddress || "",
+                        image: clerkUser.imageUrl || "",
+                    };
+                } catch (error) {
+                    console.error(error);
+                }
+            }
+
+            return {
+                ...bookingObject,
+                user,
+            };
+        }));
 
         res.json({success: true, bookings: bookingsWithUsers })
     } catch (error) {

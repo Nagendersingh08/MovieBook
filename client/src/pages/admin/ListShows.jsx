@@ -13,28 +13,32 @@ const ListShows = () => {
     const [shows, setShows] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    const getAllShows = async () =>{
-        try {
-            const { data } = await axios.get("/api/admin/all-shows", {
-                headers: { Authorization: `Bearer ${await getToken()}` }
-            });
-            if (data.success) {
-                setShows(data.shows || []);
-            } else {
-                setShows([]);
-            }
-        } catch (error) {
-            console.error(error);
-            setShows([]);
-        }
-        setLoading(false);
-    }
-
     useEffect(() => {
+        const getAllShows = async () =>{
+            try {
+                const token = await getToken()
+
+                if(!token){
+                    setLoading(false);
+                    return;
+                }
+
+                const { data } = await axios.get("/api/admin/all-shows", {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if(data.success){
+                    setShows(data.shows)
+                }
+            } catch (error) {
+                console.error(error);
+            }
+            setLoading(false);
+        }
+
         if(user){
             getAllShows();
         }   
-    }, [user]);
+    }, [axios, getToken, user]);
 
   return !loading ? (
     <>
@@ -52,10 +56,10 @@ const ListShows = () => {
             <tbody className="text-sm font-light">
                 {shows.map((show, index) => (
                     <tr key={index} className="border-b border-primary/10 bg-primary/5 even:bg-primary/10">
-                        <td className="p-2 min-w-45 pl-5">{show.movie?.title || "Movie unavailable"}</td>
-                        <td className="p-2">{show.showDateTime ? dateFormat(show.showDateTime) : "Unavailable"}</td>
-                        <td className="p-2">{Object.keys(show.occupiedSeats || {}).length}</td>
-                        <td className="p-2">{currency} {Object.keys(show.occupiedSeats || {}).length * (show.showPrice || 0)}</td>
+                        <td className="p-2 min-w-45 pl-5">{show.movie.title}</td>
+                        <td className="p-2">{dateFormat(show.showDateTime)}</td>
+                        <td className="p-2">{Object.keys(show.occupiedSeats).length}</td>
+                        <td className="p-2">{currency} {Object.keys(show.occupiedSeats).length * show.showPrice}</td>
                     </tr>
                 ))}
             </tbody>

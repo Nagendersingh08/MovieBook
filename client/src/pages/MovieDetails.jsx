@@ -8,6 +8,7 @@ import MovieCard from '../components/MovieCard'
 import Loading from '../components/Loading'
 import { useAppContext } from '../context/AppContext'
 import toast from 'react-hot-toast'
+import { formatGenres } from '../lib/movieGenres'
 
 const MovieDetails = () => {
 
@@ -16,17 +17,6 @@ const MovieDetails = () => {
   const [show, setShow] = useState(null)
 
   const {shows, axios, getToken, user, fetchFavoriteMovies, favoriteMovies, image_base_url} = useAppContext()
-
-  const getShow = async ()=>{
-    try {
-      const { data } = await axios.get(`/api/show/${id}`)
-      if(data.success){
-        setShow(data)
-      }
-    } catch (error) {
-      console.log(error)
-    }
-  }
 
   const handleFavorite = async ()=>{
     try {
@@ -44,8 +34,25 @@ const MovieDetails = () => {
   }
   
   useEffect(()=>{
+    const getShow = async ()=>{
+      try {
+        const { data } = await axios.get(`/api/show/${id}`)
+        if(data.success){
+          setShow(data)
+        }
+      } catch (error) {
+        console.log(error)
+      }
+    }
+
     getShow()
-  },[id])
+  },[axios, id])
+
+  useEffect(()=>{
+    if(user){
+      fetchFavoriteMovies()
+    }
+  }, [fetchFavoriteMovies, user])
 
   return show ? (
     <div className='px-6 md:px-16 lg:px-40 pt-30 md:pt-50'>
@@ -65,7 +72,7 @@ const MovieDetails = () => {
           <p className='text-gray-400 mt-2 text-sm leading-tight max-w-xl'>{show.movie.overview}</p>
 
           <p>
-            {timeFormat(show.movie.runtime)} • {show.movie.genres.map(genre => genre.name).join(", ")} • {show.movie.release_date.split("-")[0]}
+            {timeFormat(show.movie.runtime)} • {show.movie.genres.map(genre => genre?.name).filter(Boolean).join(", ") || "No genre"} • {show.movie.release_date.split("-")[0]}
           </p>
 
           <div className='flex items-center flex-wrap gap-4 mt-4'>

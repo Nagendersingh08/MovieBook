@@ -4,7 +4,9 @@ import { useAuth, useUser } from "@clerk/clerk-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
-axios.defaults.baseURL = import.meta.env.VITE_BASE_URL
+const baseURL = import.meta.env.VITE_BASE_URL?.trim();
+
+axios.defaults.baseURL = baseURL || "";
 
 export const AppContext = createContext()
 
@@ -23,7 +25,14 @@ export const AppProvider = ({ children })=>{
 
     const fetchIsAdmin = async ()=>{
         try {
-            const {data} = await axios.get('/api/admin/is-admin', {headers: {Authorization: `Bearer ${await getToken()}`}})
+            const token = await getToken()
+
+            if(!token){
+                setIsAdmin(false)
+                return
+            }
+
+            const {data} = await axios.get('/api/admin/is-admin', {headers: {Authorization: `Bearer ${token}`}})
             setIsAdmin(data.isAdmin)
 
             if(!data.isAdmin && location.pathname.startsWith('/admin')){
@@ -50,7 +59,14 @@ export const AppProvider = ({ children })=>{
 
     const fetchFavoriteMovies = async ()=>{
         try {
-            const { data } = await axios.get('/api/user/favorites', {headers: {Authorization: `Bearer ${await getToken()}`}})
+            const token = await getToken()
+
+            if(!token){
+                setFavoriteMovies([])
+                return
+            }
+
+            const { data } = await axios.get('/api/user/favorites', {headers: {Authorization: `Bearer ${token}`}})
 
             if(data.success){
                 setFavoriteMovies(data.movies)
@@ -67,9 +83,9 @@ export const AppProvider = ({ children })=>{
     },[])
 
     useEffect(()=>{
-        if(user){
-            fetchIsAdmin()
-            fetchFavoriteMovies()
+        if(!user){
+            setIsAdmin(false)
+            setFavoriteMovies([])
         }
     },[user])
 

@@ -1,37 +1,6 @@
 import { clerkClient } from "@clerk/express";
 import Booking from "../models/Booking.js";
 import Movie from "../models/Movie.js";
-import stripe from "stripe";
-
-const stripeInstance = new stripe(process.env.STRIPE_SECRET_KEY);
-
-const extractSessionIdFromPaymentLink = (paymentLink = "") => {
-    const match = paymentLink.match(/\/(?:c\/pay|pay)\/([^/?#]+)/);
-    return match ? match[1] : null;
-};
-
-const syncBookingPaymentStatus = async (booking) => {
-    if (booking.isPaid) return booking;
-
-    const sessionId = booking.stripeSessionId || extractSessionIdFromPaymentLink(booking.paymentLink);
-    if (!sessionId) return booking;
-
-    const session = await stripeInstance.checkout.sessions.retrieve(sessionId);
-
-    if (session.payment_status !== "paid") {
-        if (!booking.stripeSessionId) {
-            booking.stripeSessionId = sessionId;
-        }
-        return booking;
-    }
-
-    booking.isPaid = true;
-    booking.paymentLink = "";
-    booking.stripeSessionId = sessionId;
-    await booking.save();
-
-    return booking;
-};
 
 
 // API Controller Function to Get User Bookings
@@ -43,9 +12,6 @@ export const getUserBookings = async (req, res)=>{
             path: "show",
             populate: {path: "movie"}
         }).sort({createdAt: -1 })
-
-        await Promise.all(bookings.map(syncBookingPaymentStatus))
-
         res.json({success: true, bookings})
     } catch (error) {
         console.error(error.message);

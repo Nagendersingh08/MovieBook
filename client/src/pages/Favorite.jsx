@@ -1,11 +1,17 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import MovieCard from '../components/MovieCard'
 import BlurCircle from '../components/BlurCircle'
 import { useAppContext } from '../context/AppContext'
 
 const Favorite = () => {
 
-  const {favoriteMovies} = useAppContext()
+  const {favoriteMovies, fetchFavoriteMovies, user} = useAppContext()
+
+  useEffect(()=>{
+    if(user){
+      fetchFavoriteMovies()
+    }
+  }, [fetchFavoriteMovies, user])
 
   return favoriteMovies.length > 0 ? (
     <div className='relative my-40 mb-60 px-6 md:px-16 lg:px-40 xl:px-44 overflow-hidden min-h-[80vh]'>

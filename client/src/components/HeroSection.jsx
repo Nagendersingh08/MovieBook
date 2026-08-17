@@ -1,57 +1,40 @@
 import React from 'react'
+import { assets } from '../assets/assets'
 import { ArrowRight, CalendarIcon, ClockIcon } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import timeFormat from '../lib/timeFormat'
 
 const HeroSection = () => {
-  const navigate = useNavigate()
 
-  const heroMovie = {
-    title: 'Crime 101',
-    genres: 'Crime | Drama | Mystery & Thriller',
-    releaseYear: '2026',
-    runtime: timeFormat(140),
-    overview: "An elusive jewel thief operating along the 101 freeway pushes a relentless detective and a desperate insurance broker into a high-stakes game where nobody gets out clean."
-  }
+    const navigate = useNavigate()
 
-  const heroImage = 'https://cdn.moviefone.com/admin-uploads/highlights/images/crime-101-chris-hemsworth_1761237667.webp'
+    return (
+      <div className='flex flex-col items-start justify-center gap-4 px-6 md:px-16 lg:px-36 bg-[url("/backgroundImage.png")] bg-cover bg-center h-screen'>
 
-  return (
-    <div
-      className='relative flex flex-col items-start justify-center gap-4 px-6 md:px-16 lg:px-36 h-screen bg-cover bg-[center_right]'
-      style={{ backgroundImage: `linear-gradient(90deg, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.72) 34%, rgba(0, 0, 0, 0.28) 100%), url("${heroImage}")` }}
-    >
-      <span className='mt-20 rounded-full border border-primary/30 bg-primary/12 px-4 py-1 text-sm font-medium text-primary'>
-        Featured Now
-      </span>
+      <img src={assets.marvelLogo} alt="" className="max-h-11 lg:h-11 mt-20"/>
 
-      <h1 className='text-5xl md:text-[70px] md:leading-18 font-semibold max-w-110'>
-        {heroMovie.title}
+      <h1 className='font-semibold max-w-110'>
+        <span className='text-5xl md:text-[70px] md:leading-18'>
+          SPIDER-MAN
+        </span>
+        <br />
+        <span className='text-3xl md:text-[42px] md:leading-12 block text-center'>
+          BRAND NEW DAY
+        </span>
       </h1>
 
-      <div className='flex flex-wrap items-center gap-4 text-gray-300'>
-        <span>{heroMovie.genres}</span>
+      <div className='flex items-center gap-4 text-gray-300'>
+        <span>Action | Adventure | Fantasy</span>
         <div className='flex items-center gap-1'>
-          <CalendarIcon className='w-4.5 h-4.5'/> {heroMovie.releaseYear}
+            <CalendarIcon className='w-4.5 h-4.5'/> 2026
         </div>
         <div className='flex items-center gap-1'>
-          <ClockIcon className='w-4.5 h-4.5'/> {heroMovie.runtime}
+            <ClockIcon className='w-4.5 h-4.5'/> 2h 25m
         </div>
       </div>
-
-      <p className='max-w-md text-gray-300'>
-        {heroMovie.overview}
-      </p>
-
-      <button
-        onClick={() => {
-          navigate(`/movies?search=${encodeURIComponent(heroMovie.title)}`)
-          scrollTo(0, 0)
-        }}
-        className='flex items-center gap-1 px-6 py-3 text-sm bg-primary hover:bg-primary-dull transition rounded-full font-medium cursor-pointer'
-      >
-        Book Now
-        <ArrowRight className="w-5 h-5"/>
+      <p className='max-w-md text-gray-300'>Peter Parker faces a new threat while trying to protect New York City and the people he loves, as a dangerous new chapter begins in his life as Spider-Man.</p>
+      <button onClick={()=> navigate('/movies')} className='flex items-center gap-1 px-6 py-3 text-sm bg-primary hover:bg-primary-dull transition rounded-full font-medium cursor-pointer'>
+         Explore Movies
+         <ArrowRight className="w-5 h-5"/>
       </button>
     </div>
   )

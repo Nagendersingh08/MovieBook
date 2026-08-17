@@ -12,28 +12,34 @@ const ListBookings = () => {
     const [bookings, setBookings] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    const getAllBookings = async () => {
+     useEffect(() => {
+      const getAllBookings = async () => {
         try {
+          const token = await getToken()
+
+          if(!token){
+            setIsLoading(false);
+            return;
+          }
+
           const { data } = await axios.get("/api/admin/all-bookings", {
-                headers: { Authorization: `Bearer ${await getToken()}` }
-            });
-            if (data.success) {
-                setBookings(data.bookings || []);
-            } else {
-                setBookings([]);
-            }
+            headers: { Authorization: `Bearer ${token}` }
+          });
+
+          if (data.success) {
+            setBookings(data.bookings);
+          }
         } catch (error) {
           console.error(error);
-          setBookings([]);
         }
-        setIsLoading(false)
-    };
 
-     useEffect(() => {
+        setIsLoading(false);
+      };
+
       if (user) {
         getAllBookings();
-      }    
-    }, [user]);
+      }
+    }, [axios, getToken, user]);
 
 
   return !isLoading ? (
@@ -43,7 +49,7 @@ const ListBookings = () => {
         <table className="w-full border-collapse  rounded-md overflow-hidden text-nowrap">
             <thead>
                 <tr className="bg-primary/20 text-left text-white">
-                    <th className="p-2 font-medium pl-5">User Name</th>
+                    <th className="p-2 font-medium pl-5">User</th>
                     <th className="p-2 font-medium">Movie Name</th>
                     <th className="p-2 font-medium">Show Time</th>
                     <th className="p-2 font-medium">Seats</th>
@@ -51,11 +57,13 @@ const ListBookings = () => {
                 </tr>
             </thead>
             <tbody className="text-sm font-light">
-                {bookings.map((item, index) => (
-                    <tr key={index} className="border-b border-primary/20 bg-primary/5 even:bg-primary/10">
-                        <td className="p-2 min-w-45 pl-5">{item.user?.name || "Unknown user"}</td>
-                        <td className="p-2">{item.show?.movie?.title || "Show unavailable"}</td>
-                        <td className="p-2">{item.show?.showDateTime ? dateFormat(item.show.showDateTime) : "Unavailable"}</td>
+                {bookings.map((item) => (
+                    <tr key={item._id} className="border-b border-primary/20 bg-primary/5 even:bg-primary/10">
+                        <td className="p-2 min-w-45 pl-5">
+                          <span className="font-medium">{item.user?.name || "Unknown User"}</span>
+                        </td>
+                        <td className="p-2">{item.show?.movie?.title || "Unknown Movie"}</td>
+                        <td className="p-2">{item.show?.showDateTime ? dateFormat(item.show.showDateTime) : "N/A"}</td>
                         <td className="p-2">{Array.isArray(item.bookedSeats) ? item.bookedSeats.join(", ") : ""}</td>
                         <td className="p-2">{currency} {item.amount}</td>
                     </tr>

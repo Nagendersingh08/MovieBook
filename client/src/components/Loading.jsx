@@ -1,49 +1,47 @@
 import React, { useEffect } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAppContext } from '../context/AppContext'
-import { useAuth } from '@clerk/clerk-react'
 
 const Loading = () => {
 
   const { nextUrl } = useParams()
-  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { axios } = useAppContext()
-  const { getToken, isLoaded } = useAuth()
+  const navigate = useNavigate()
+  const { axios, getToken } = useAppContext()
 
   useEffect(()=>{
-    const verifyAndRedirect = async () => {
-      const sessionId = searchParams.get('session_id')
-      const bookingId = searchParams.get('bookingId')
+    let timeoutId
 
-      if (nextUrl === 'my-bookings' && sessionId && bookingId && isLoaded) {
+    const confirmPayment = async () => {
+      const sessionId = searchParams.get('session_id')
+
+      if (sessionId) {
         try {
           const token = await getToken()
-
-          if (token) {
-          await axios.post('/api/booking/verify-payment', {
-            sessionId,
-            bookingId
-          }, {
-              headers: { Authorization: `Bearer ${token}` }
-            })
-          }
+          await axios.get('/api/booking/confirm-payment', {
+            params: { session_id: sessionId },
+            headers: { Authorization: `Bearer ${token}` }
+          })
         } catch (error) {
-          console.log(error)
+          console.error(error)
         }
       }
 
-      navigate('/' + nextUrl)
+      if(nextUrl){
+        timeoutId = setTimeout(()=>{
+          navigate('/' + nextUrl)
+        },1500)
+      }
     }
 
-    if(nextUrl){
-      const timeout = setTimeout(() => {
-        verifyAndRedirect()
-      }, isLoaded ? 1500 : 2500)
+    confirmPayment()
 
-      return () => clearTimeout(timeout)
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
     }
-  },[axios, getToken, isLoaded, navigate, nextUrl, searchParams])
+  },[axios, getToken, navigate, nextUrl, searchParams])
 
   return (
     <div className='flex justify-center items-center h-[80vh]'>

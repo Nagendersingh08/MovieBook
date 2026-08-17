@@ -11,7 +11,7 @@ import { Toaster } from 'react-hot-toast'
 import Footer from './components/Footer'
 import Layout from './pages/admin/Layout'
 import Dashboard from './pages/admin/Dashboard'
-import AddShows from './pages/admin/AddShow'
+import AddShows from './pages/admin/AddShows'
 import ListShows from './pages/admin/ListShows'
 import ListBookings from './pages/admin/ListBookings'
 import { useAppContext } from './context/AppContext'
@@ -44,6 +44,7 @@ const App = () => {
         )}>
           <Route index element={<Dashboard/>}/>
           <Route path="add-shows" element={<AddShows/>}/>
+          <Route path="shows" element={<ListShows/>}/>
           <Route path="list-shows" element={<ListShows/>}/>
           <Route path="list-bookings" element={<ListBookings/>}/>
         </Route>
